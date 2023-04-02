@@ -1,0 +1,65 @@
+//Author: Andrew West
+//Date: 4/2/2023
+//Goal: To record the temperature and humidity once a minute
+#include <DHT.h>
+#include <SD.h>
+#include <TimeLib.h>
+
+#define DHTPIN 2
+#define DHTTYPE DHT11
+
+DHT dht(DHTPIN, DHTTYPE);
+
+File dataFile;
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+
+  Serial.print("Initializing SD card...");
+  if (!SD.begin(4)) {
+    Serial.println("initialization failed!");
+    return;
+  }
+  Serial.println("initialization done.");
+  dataFile = SD.open("data.csv", FILE_WRITE);
+  if (dataFile) {
+    dataFile.println("Date,Time,Temperature (C),Humidity (%)");
+    dataFile.close();
+    Serial.println("CSV file created successfully.");
+  } else {
+    Serial.println("error opening data.csv");
+  }
+}
+
+void loop() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  String date = String(year()) + "/" + month() + "/" + day();
+  String time = String(hour()) + ":" + minute() + ":" + second();
+
+  dataFile = SD.open("data.csv", FILE_WRITE);
+  if (dataFile) {
+    dataFile.print(date);
+    dataFile.print(",");
+    dataFile.print(time);
+    dataFile.print(",");
+    dataFile.print(t);
+    dataFile.print(",");
+    dataFile.println(h);
+    dataFile.close();
+    Serial.println("Data saved to CSV file.");
+  } else {
+    Serial.println("error opening data.csv");
+  }
+  delay(60000); // wait for a minute
+}
