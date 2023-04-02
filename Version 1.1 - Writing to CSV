@@ -1,0 +1,61 @@
+//Author: Andrew West
+//Date: 4/2/2023
+//Goal: To record the temperature and humidity once a minute and save it to a CSV
+//Previous version had errors which made the code not work
+#include <dht.h>
+#include <SD.h>
+#include <SPI.h>
+#include <RTClib.h>
+
+dht DHT;
+RTC_DS1307 rtc;
+
+#define DHT11_PIN 7
+#define CSV_FILE "TempAndHumidity.csv"
+
+void setup(){
+  Serial.begin(9600);
+  
+  if (!SD.begin(4)) {
+    Serial.println("SD card initialization failed!");
+    return;
+  }
+
+  if (!rtc.begin()) {
+    Serial.println("RTC initialization failed!");
+    return;
+  }
+  
+  if (!rtc.isrunning()) {
+    Serial.println("RTC is NOT running, setting the time...");
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+}
+
+void loop(){
+  DateTime now = rtc.now();
+  
+  int chk = DHT.read11(DHT11_PIN);
+  float temp = DHT.temperature;
+  float hum = DHT.humidity;
+  
+  if (isnan(temp) || isnan(hum)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+  
+  String data = String(now.year(), DEC) + "-" + String(now.month(), DEC) + "-" + String(now.day(), DEC) + "," +
+                String(now.hour(), DEC) + ":" + String(now.minute(), DEC) + ":" + String(now.second(), DEC) + "," +
+                String(temp) + "," + String(hum);
+  
+  File file = SD.open(CSV_FILE, FILE_WRITE);
+  if (file) {
+    file.println(data);
+    file.close();
+    Serial.println("Data saved to CSV file: " + data);
+  } else {
+    Serial.println("Failed to open CSV file for writing!");
+  }
+  
+  delay(60000); // wait 1 minute
+}
